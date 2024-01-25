@@ -15,33 +15,35 @@ CREATE TABLE Class (
 CREATE TABLE MeshData (
     MeshID INT AUTO_INCREMENT PRIMARY KEY,
     ClassID INT,
-    AuthorID INT,
     NumVertices INT,
     NumEdges INT,
-    NumIsolatedSubgraphs INT,
-    MeshStoragePath TEXT,
-    GraphStoragePath TEXT,
-    -- VoxelStoragePath TEXT, -- For future use
+    NumFaces INT,
+    NumVoxels INT,
+    MeshStoragePath VARCHAR(255),
+    GraphStoragePath VARCHAR(255),
+    VoxelStoragePath VARCHAR(255),
     CreatedAt DATETIME,
     UpdatedAt DATETIME,
+    AuthorID INT,
     FOREIGN KEY (ClassID) REFERENCES Class(ClassID),
     FOREIGN KEY (AuthorID) REFERENCES Author(AuthorID)
 );
 
 CREATE TABLE AugmentationData (
     AugmentationID INT AUTO_INCREMENT PRIMARY KEY,
-    MeshID INT,
     ClassID INT,
     NumVertices INT,
     NumEdges INT,
-    NumIsolatedSubgraphs INT,
-    TransformationDetails TEXT,
-    ModelReference TEXT,
-    MeshStoragePath TEXT,
-    GraphStoragePath TEXT,
+    NumFaces INT,
+    NumVoxels INT,
+    MeshStoragePath VARCHAR(255),
+    GraphStoragePath VARCHAR(255),
+    VoxelStoragePath VARCHAR(255),
     CreatedAt DATETIME,
     UpdatedAt DATETIME,
-    FOREIGN KEY (MeshID) REFERENCES MeshData(MeshID),
+    SourceMeshID INT,
+    TransformationDetails TEXT,
+    FOREIGN KEY (SourceMeshID) REFERENCES MeshData(MeshID),
     FOREIGN KEY (ClassID) REFERENCES Class(ClassID)
 );
 
@@ -50,13 +52,14 @@ CREATE TABLE SynthesisData (
     ClassID INT,
     NumVertices INT,
     NumEdges INT,
-    NumIsolatedSubgraphs INT,
-    SynthesisModel TEXT,
-    ModelBackupReference TEXT,
-    Details TEXT,
-    MeshStoragePath TEXT,
-    GraphStoragePath TEXT,
+    NumFaces INT,
+    NumVoxels INT,
+    MeshStoragePath VARCHAR(255),
+    GraphStoragePath VARCHAR(255),
+    VoxelStoragePath VARCHAR(255),
     CreatedAt DATETIME,
     UpdatedAt DATETIME,
+    SynthesisModel TEXT,
+    ModelBackupReference TEXT,
     FOREIGN KEY (ClassID) REFERENCES Class(ClassID)
 );

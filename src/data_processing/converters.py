@@ -111,27 +111,6 @@ def fix_graph(graph):
     return graph
 
 
-
-def mes_to_graph(mesh):
-    triangles = mesh.triangles
-    # Create edges based on triangles
-    edges = []
-    for v0, v1, v2 in triangles:
-        edges.append([v0, v1])
-        edges.append([v1, v2])
-        edges.append([v2, v0])
-
-    # Convert edges to a torch tensor with shape [2, num_edges]
-    edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-
-    # Create the graph
-    # graph = Data(x=point_cloud.x, edge_index=edge_index, pos=point_cloud.pos)
-    graph = Data(x=point_cloud.x, edge_index=edge_index, pos=point_cloud.pos)
-    graph = fix_graph(graph)
-    return graph
-
-
-
 def pointcloud_to_graph(point_cloud):
     mesh = pyg_to_o3d_mesh_ball(point_cloud)
     triangles = mesh.triangles
@@ -151,5 +130,49 @@ def pointcloud_to_graph(point_cloud):
     return graph
 
 
+def normolize_mesh(mesh):
+    mesh.scale(1 / np.max(mesh.get_max_bound() - mesh.get_min_bound()),
+               center=mesh.get_center())
+    return mesh
 
+
+def mesh_to_graph(mesh):
+    # Extract vertices and vertex normals
+    vertices = torch.tensor(mesh.vertices, dtype=torch.float)
+    vertex_normals = torch.tensor(mesh.vertex_normals, dtype=torch.float)
+
+    # Create edges
+    edges = []
+    for triangle in mesh.triangles:
+        edges += [[triangle[0], triangle[1]], [triangle[1], triangle[2]], [triangle[2], triangle[0]]]
+    edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
+
+    # Create graph
+    graph = Data(x=vertices, edge_index=edge_index, norm=vertex_normals)
+
+    return graph
+
+
+def mesh_to_voxel(mesh, voxel_size=0.05):
+    return o3d.geometry.VoxelGrid.create_from_triangle_mesh(
+                                mesh, voxel_size=voxel_size)
+
+
+
+def trimesh_to_open3d(trimesh_mesh):
+    # Extract vertices and faces from the Trimesh object
+    vertices = np.asarray(trimesh_mesh.vertices)
+    faces = np.asarray(trimesh_mesh.faces)
+
+    # Create an Open3D mesh object
+    open3d_mesh = o3d.geometry.TriangleMesh()
+    
+    # Set vertices and faces
+    open3d_mesh.vertices = o3d.utility.Vector3dVector(vertices)
+    open3d_mesh.triangles = o3d.utility.Vector3iVector(faces)
+
+    # Compute vertex normals
+    open3d_mesh.compute_vertex_normals()
+
+    return open3d_mesh
 

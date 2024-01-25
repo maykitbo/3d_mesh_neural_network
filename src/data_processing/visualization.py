@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
-import data_processing.converters as ptg
+import converters as ptg
 import plotly.graph_objects as pgo
 # import trimesh
 # from tqdm import tqdm
@@ -10,7 +10,7 @@ import plotly.graph_objects as pgo
 def vertices_distribution(dataset, bounds: lambda data: True):
     vertices_counts = [data.pos.shape[0] for data in dataset if bounds(data)]
 
-    plt.hist(vertices_counts, bins=30)
+    plt.hist(vertices_counts, bins=range(11), align='left', rwidth=0.9)
     plt.xlabel('Number of Vertices')
     plt.ylabel('Count')
     plt.title('Distribution of Vertices Across All Classes')
@@ -45,7 +45,7 @@ def vertices_distribution_in_class(dataset, get_category):
         if get_category(data):
             vertices_counts.append(data.pos.shape[0])
 
-    plt.hist(vertices_counts, bins=30)
+    plt.hist(vertices_counts, bins=30, align='left', rwidth=0.9)
     plt.xlabel('Number of Vertices')
     plt.ylabel('Count')
     plt.title(f'Distribution of Vertices')
@@ -79,22 +79,11 @@ def combined_vertices_distribution(dataset,
     plt.show()
 
 
-def trimesh_to_open3d(trimesh_mesh):
-    # Extract vertices and faces from the Trimesh object
-    vertices = np.asarray(trimesh_mesh.vertices)
-    faces = np.asarray(trimesh_mesh.faces)
-
-    # Create an Open3D mesh object
-    open3d_mesh = o3d.geometry.TriangleMesh()
-    
-    # Set vertices and faces
-    open3d_mesh.vertices = o3d.utility.Vector3dVector(vertices)
-    open3d_mesh.triangles = o3d.utility.Vector3iVector(faces)
-
-    # Compute vertex normals
-    open3d_mesh.compute_vertex_normals()
-
-    return open3d_mesh
+def draw_mesh_voxel(mesh, voxel, colors = [[0, 1, 0], [0, 0, 1]]):
+    translation = np.array([max(mesh.get_max_bound() - mesh.get_min_bound()) * 1.2, 0, 0])
+    mesh.translate(translation, relative=False)
+    mesh.paint_uniform_color(colors[0])
+    o3d.visualization.draw_geometries([mesh, voxel], mesh_show_wireframe=True)
 
 
 def draw_meshes(mesh_list,
@@ -113,6 +102,68 @@ def draw_meshes(mesh_list,
     
     # Draw all meshes in one window
     o3d.visualization.draw_geometries(mesh_list, mesh_show_wireframe=True)
+
+
+def plot_mesh(ax, mesh, name):
+    ax.set_title(name)
+    vertices = np.asarray(mesh.vertices)
+    triangles = np.asarray(mesh.triangles)
+    ax.plot_trisurf(vertices[:, 0], vertices[:, 1], vertices[:, 2], triangles=triangles)
+
+
+def plot_voxel(ax, voxel_grid, name):
+    ax.set_title(name)
+    voxel_indices = np.array([v.grid_index for v in voxel_grid.get_voxels()])
+    grid_size = np.max(voxel_indices, axis=0) + 1
+    voxels = np.zeros(grid_size, dtype=bool)
+    for x, y, z in voxel_indices:
+        voxels[x, y, z] = True
+    ax.voxels(voxels, edgecolor='k')
+
+
+def plot_graph(ax, graph, name):
+    ax.set_title(name)
+    # Draw vertices
+    pos = graph.x
+    ax.scatter(pos[:, 0].numpy(), pos[:, 1].numpy(), pos[:, 2].numpy(), c='blue', s=0.3)
+    # Draw edges
+    edge_index = graph.edge_index
+    for i, j in edge_index.t().numpy():
+        ax.plot(*zip(pos[i].numpy(), pos[j].numpy()), color='red', linewidth=0.1)
+
+
+def plot_meshes(meshes, names, file_path: str | None = None):
+    size = len(meshes)
+    fig = plt.figure(figsize=(6 * size, 6))
+    for i in range(size):
+        ax = fig.add_subplot(131 + i, projection='3d')
+        plot_mesh(ax, meshes[i], names[i])
+
+    if file_path is not None:  
+        plt.savefig(file_path, dpi=300)
+    plt.show()
+
+
+
+def plt_voxels_mesh_graph(voxel_grid, mesh, graph, file_path: str | None = None):
+    # # Create a figure and a 3D axis
+    fig = plt.figure(figsize=(18, 8))
+    ax0 = fig.add_subplot(131, projection='3d')
+    ax1 = fig.add_subplot(132, projection='3d')
+    ax2 = fig.add_subplot(133, projection='3d')
+
+    # Plot voxels
+    plot_voxel(ax0, voxel_grid, 'Voxels')
+
+    # # Plot mesh
+    plot_mesh(ax1, mesh, 'Mesh')
+
+    # Plot graph
+    plot_graph(ax2, graph, 'Graph')
+
+    if file_path is not None:  
+        plt.savefig(file_path, dpi=300)
+    plt.show()
 
 
 def show_y_logic(test_object):
@@ -135,7 +186,7 @@ def show_y_logic(test_object):
 
 def show_graph(graph):
     # Extract node positions
-    node_pos = graph.pos.numpy()  # Convert to numpy array for easier handling
+    node_pos = graph.x.numpy()  # Convert to numpy array for easier handling
 
     # Prepare edge data for plotting
     edge_x = []

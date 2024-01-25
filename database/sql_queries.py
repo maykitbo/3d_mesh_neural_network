@@ -3,7 +3,14 @@ class SQLQueries:
     INSERT_CLASS = 'INSERT INTO Class (Name) VALUES (%s)'
     INSERT_AUTHOR = 'INSERT INTO Author (Name) VALUES (%s)'
     INSERT_MESH_DATA = '''INSERT INTO MeshData (
-        ClassID, AuthorID, NumVertices, NumEdges, NumIsolatedSubgraphs, 
-        MeshStoragePath, GraphStoragePath, CreatedAt, UpdatedAt) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW(), NOW())'''
+        ClassID, NumVertices, NumEdges, NumFaces, NumVoxels, 
+        MeshStoragePath, GraphStoragePath, VoxelStoragePath, 
+        CreatedAt, UpdatedAt, AuthorID) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW(), %s)'''
+    SELECT_ALL_CLASSES = 'SELECT ClassID, Name FROM Class'
+    SELECT_ALL_AUTHORS = 'SELECT AuthorID, Name FROM Author'
+    GET_TABLE_SIZE = 'SELECT COUNT(*) FROM %s'
+    GET_MESH_PATH = 'SELECT MeshStoragePath FROM %s WHERE MeshID = %s'
+    GET_GRAPH_PATH = 'SELECT GraphStoragePath FROM %s WHERE MeshID = %s'
+
 
