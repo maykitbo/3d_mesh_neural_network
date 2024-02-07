@@ -14,6 +14,6 @@ class SQLQueries:
     GET_GRAPH_PATH = 'SELECT GraphStoragePath FROM %s WHERE MeshID = %s'
     GET_MESHES = 'SELECT MeshStoragePath FROM %s WHERE %s = %s'
     GET_GRAPHS = 'SELECT GraphStoragePath FROM %s WHERE %s = %s'
-
+    GET = 'SELECT %s'
 
 

@@ -7,6 +7,11 @@ from .sql_queries import SQLQueries as sqlq
 from .settings import Personal as P
 import uuid
 from pathlib import Path
+from typing import Tuple
+import numpy as np
+from typing import Union, Iterable
+from pandas import Interval
+from .read_write import *
 
 
 class DataBaseOperations():
@@ -111,11 +116,14 @@ class DataBaseOperations():
         graph_path = os.path.join(self.dataset_path, 'graphs', f'{unique_file_name}.pt')
 
         # Save mesh in PLY format
-        o3d.io.write_triangle_mesh(mesh_path, mesh)
+        # o3d.io.write_triangle_mesh(mesh_path, mesh)
+        save_mesh(mesh_path, mesh)
         # Save graph in PyTorch format
-        torch.save(graph, graph_path)
+        # torch.save(graph, graph_path)
+        save_graph(graph_path, graph)
         # Save voxel
         # TODO save_voxel(voxel, voxel_path)
+
         class_id = self.get_class_id(class_name)
         author_id = self.get_author_id(author_name)
 
@@ -141,6 +149,143 @@ class DataBaseOperations():
                 return None
             return func(self, *args, **kwargs)
         return wrapper
+    
+
+    def _check_condition(self, condition):
+        if isinstance(condition, str):
+            return condition
+        else:
+            raise TypeError('Invalid condition type')
+
+
+    def _id_condition(self, condition):
+        if isinstance(condition, int):
+            return f' = {condition}'
+        elif isinstance(condition, (np.ndarray, Iterable)) and isinstance(condition[0], int):
+            placeholders = ', '.join([str(id) for id in condition])
+            return f' IN ({placeholders})'
+        else:
+            return None
+
+
+    def _str_condition(self, condition, reference):
+        if isinstance(condition, str):
+            return f' = {reference[condition]}'
+        elif isinstance(condition, Iterable) and isinstance(condition[0], str):
+            placeholders = ', '.join([str(reference[name]) for name in condition])
+            return f' IN ({placeholders})'
+        else:
+            return None
+
+
+    def _ref_condition(self, condition, reference):
+        id_result = self._id_condition(condition)
+        if id_result is None:
+            id_result = self._str_condition(condition, reference)
+        return self._check_condition(id_result)
+
+
+    def _range_condition(self, condition):
+        if condition[0] is not None and condition[1] is not None:
+            return ' BETWEEN %s AND %s', condition
+        elif condition[0] is not None:
+            return ' >= %s', (condition[0],)
+        elif condition[1] is not None:
+            return ' <= %s', (condition[1],)
+        else:
+            raise ValueError("Invalid range condition")
+
+
+    def _request_preprocess(self, request: str | list[str]):
+        requests_dict = {
+            'count':        ('COUNT(*)', None),
+            'id':           ('MeshID', None),
+            'mesh_path':    ('MeshStoragePath', None),
+            'graph_path':   ('GraphStoragePath', None),
+            'voxel_path':   ('VoxelStoragePath', None),
+            'num_vertices': ('NumVertices', None),
+            'num_edges':    ('NumEdges', None),
+            'num_faces':    ('NumFaces', None),
+            'num_voxels':   ('NumVoxels', None),
+            'created_at':   ('CreatedAt', None),
+            'updated_at':   ('UpdatedAt', None),
+            'author_id':    ('AuthorID', None),
+            'class_id':     ('ClassID', None),
+            'mesh':         ('MeshStoragePath', lambda path: load_mesh(path)),
+            'graph':        ('GraphStoragePath', lambda path: load_graph(path)),
+            'voxel':        ('VoxelStoragePath', lambda path: load_voxel(path)),
+            'author':       ('AuthorID', lambda id: self.authors[id]),
+            'class':        ('AuthorID', lambda id: self.classes[id])}
+
+        if isinstance(request, str):
+            request = [request]
+
+        select_parts = []
+        postprocess_actions = []
+
+        for req in request:
+            sql_part, postprocess = requests_dict.get(req, (None, None))
+            if sql_part:
+                select_parts.append(sql_part)
+                postprocess_actions.append(postprocess)
+
+        return select_parts, postprocess_actions
+
+        
+    
+    def _request_postprocess(self):
+        pass
+
+
+    @_check_connection_and_table
+    def get_from_mesh_data(self, table_name,
+            id: int | np.ndarray | Iterable[int] | None = None,
+            classes: int | np.ndarray | Iterable[int] | str | Iterable[str] | None = None,
+            num_vertices_range: Tuple[int | None, int | None] | None = None,
+            num_edges_range: Tuple[int | None, int | None] | None = None,
+            num_faces_range: Tuple[int | None, int | None] | None = None,
+            num_voxels_range: Tuple[int | None, int | None] | None = None,
+            authors: int | np.ndarray | Iterable[int] | str | Iterable[str] | None = None,
+            request: str | Iterable[str] | None = None):
+
+        conditions = []
+        if id:
+            conditions.append('MeshId' + self._check_condition(self._id_condition(id)))
+        if classes:
+            conditions.append('ClassID' + self._ref_condition(classes, self.classes))
+        if num_vertices_range:
+            conditions.append('NumVertices' + self._range_condition(num_vertices_range))
+        if num_edges_range:
+            conditions.append('NumEdges' + self._range_condition(num_edges_range))
+        if num_faces_range:
+            conditions.append('NumFaces' + self._range_condition(num_faces_range))
+        if num_voxels_range:
+            conditions.append('NumVoxels' + self._range_condition(num_voxels_range))
+        if authors:
+            conditions.append('AuthorID' + self._ref_condition(authors, self.authors))
+
+        select_parts, postprocess_actions  = self._request_preprocess(request)
+
+        where_clause = ' AND '.join(conditions) if len(conditions) > 0 else None
+        select_str = ", ".join(select_parts) if len(select_parts) > 0 else '*'
+
+        query = f'SELECT {select_str} FROM {table_name}'
+        if where_clause:
+            query += f'WHERE {where_clause}'
+        
+        self.cursor.execute(query)
+        results = self.cursor.fetchall()
+
+        for response in results:
+            processed_response = []
+            for data, postprocess in zip(response, postprocess_actions):
+                if postprocess:
+                    processed_response.append(postprocess(data))
+                else:
+                    processed_response.append(data)
+            yield tuple(processed_response)
+        
+
 
 
     @_check_connection_and_table

@@ -1,7 +1,23 @@
 import open3d as o3d
 import numpy as np
 import struct
+import torch
+import open3d as o3d
 
+def save_graph(graph, path):
+    torch.save(graph, path)
+
+
+def save_mesh(mesh, path):
+     o3d.io.write_triangle_mesh(mesh, path)
+
+
+def load_graph(path):
+    return torch.load(path)
+
+
+def load_mesh(path):
+    return o3d.io.read_triangle_mesh(path)
 
 def save_voxel(voxel_grid, path):
     # Assuming voxel_grid is an instance of o3d.geometry.VoxelGrid
