@@ -1,6 +1,6 @@
 import open3d as o3d
 import numpy as np
-import visualization
+from . import visualization
 import torch
 from torch_geometric.data import Data
 import networkx as nx

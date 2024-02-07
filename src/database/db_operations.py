@@ -3,8 +3,8 @@ import mysql.connector
 from mysql.connector import Error
 import open3d as o3d
 import torch
-from sql_queries import SQLQueries as sqlq
-from settings import Personal as P
+from .sql_queries import SQLQueries as sqlq
+from .settings import Personal as P
 import uuid
 from pathlib import Path
 
@@ -137,7 +137,7 @@ class DataBaseOperations():
             if not self._check_connection():
                 return None
             if (args[0] not in DataBaseOperations.table_names):
-                print(f"Error: Invalid table name.")
+                print(f"Error: Invalid table name: {args[0]}")
                 return None
             return func(self, *args, **kwargs)
         return wrapper
@@ -152,15 +152,17 @@ class DataBaseOperations():
 
     @_check_connection_and_table
     def get_mesh_path(self, table_name, mesh_id):
-        query = sqlq.GET_MESH_PATH % (table_name, '%s')
-        self.cursor.execute(query, (mesh_id,))
+        # query = sqlq.GET_MESH_PATH % (table_name, '%s')
+        # self.cursor.execute(query, (mesh_id,))
+        self.cursor.execute(sqlq.GET_MESH_PATH % (table_name, mesh_id))
         return self.cursor.fetchone()[0]
 
 
     @_check_connection_and_table
     def get_graph_path(self, table_name, mesh_id):
-        query = sqlq.GET_GRAPH_PATH % (table_name, '%s')
-        self.cursor.execute(query, (mesh_id,))
+        # query = sqlq.GET_GRAPH_PATH % (table_name, '%s')
+        # self.cursor.execute(query, (mesh_id,))
+        self.cursor.execute(sqlq.GET_GRAPH_PATH % (table_name, mesh_id))
         return self.cursor.fetchone()[0]
 
 
@@ -176,9 +178,30 @@ class DataBaseOperations():
 
     @_check_connection_and_table
     def get_grpah(self, table_name, mesh_id):
-        graph_path = self.get_graph_path(mesh_id, table_name)
+        graph_path = self.get_graph_path(table_name, mesh_id)
         try:
             return torch.load(graph_path)
         except Exception as e:
             print(f'Error: read graph file from {graph_path}.', e)
             return None
+    
+
+    @_check_connection_and_table
+    def get_meshes(self, table_name, column_name, column_value):
+        self.cursor.execute(sqlq.GET_MESHES % (table_name, column_name, column_value))
+        return self.cursor.fetchone()[0]
+
+
+    @_check_connection_and_table
+    def get_graphs(self, table_name, column_name, column_value):
+        query = sqlq.GET_GRAPHS % (table_name, column_name, column_value)
+        self.cursor.execute(query)
+
+        graphs = []
+        for graph_path in [graph_path[0] for graph_path in self.cursor.fetchall()]:
+            graphs.append(torch.load(graph_path))
+        
+        return graphs
+    
+
+

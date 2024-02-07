@@ -1,4 +1,5 @@
 venv/
-datasets/
+dataset/
 __pycache__/
 up.sh
+*.egg-info

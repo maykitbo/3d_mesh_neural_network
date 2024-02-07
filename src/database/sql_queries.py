@@ -12,5 +12,8 @@ class SQLQueries:
     GET_TABLE_SIZE = 'SELECT COUNT(*) FROM %s'
     GET_MESH_PATH = 'SELECT MeshStoragePath FROM %s WHERE MeshID = %s'
     GET_GRAPH_PATH = 'SELECT GraphStoragePath FROM %s WHERE MeshID = %s'
+    GET_MESHES = 'SELECT MeshStoragePath FROM %s WHERE %s = %s'
+    GET_GRAPHS = 'SELECT GraphStoragePath FROM %s WHERE %s = %s'
+
 
 

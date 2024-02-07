@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
-import converters as ptg
+from . import converters as convert
 import plotly.graph_objects as pgo
 # import trimesh
 # from tqdm import tqdm
@@ -167,7 +167,7 @@ def plt_voxels_mesh_graph(voxel_grid, mesh, graph, file_path: str | None = None)
 
 
 def show_y_logic(test_object):
-    pcd = ptg.data_to_pcd(test_object)
+    pcd = convert.data_to_pcd(test_object)
 
     # Ensure the colors list has enough colors for the range of your data
     colors = [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 0], [1, 0, 1], [0, 1, 1]]

@@ -36,10 +36,3 @@ def load_voxel(path):
         # The exact method depends on how the VoxelGrid is supposed to be reconstructed
 
     return voxel_grid
-
-
-
-
-def load_voxel(path):
-
-    return voxel
